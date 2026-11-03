@@ -108,6 +108,21 @@ func TestRunRetriesAnAlertThatDidntGoOut(t *testing.T) {
 	}
 }
 
+func TestRunRetriesSoonWhenItCantListWhatsRunning(t *testing.T) {
+	checker, err := New(Options{Interval: 6 * time.Hour, StateFile: filepath.Join(t.TempDir(), "s.json"),
+		DockerURL: "tcp://127.0.0.1:1", Client: http.DefaultClient})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := checker.Run(context.Background(), false)
+	if len(report.Problems) == 0 || time.Until(report.Next) > 2*time.Minute {
+		t.Errorf("next check in %s, want about a minute", time.Until(report.Next).Round(time.Second))
+	}
+	if report.Source != "Docker" {
+		t.Errorf("source = %q", report.Source)
+	}
+}
+
 func TestStateSurvivesARestart(t *testing.T) {
 	fx := newFixture(t)
 	fx.checker.Run(context.Background(), true)
