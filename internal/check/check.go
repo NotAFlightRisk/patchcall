@@ -92,7 +92,10 @@ func (c *Checker) Loop(ctx context.Context) {
 // Run does one full check, alerting on new matches when alert is set
 func (c *Checker) Run(ctx context.Context, alert bool) Report {
 	report := Report{Checked: time.Now(), Next: time.Now().Add(c.opts.Interval),
-		Source: cmp.Or(filepath.Base(c.opts.Inventory), "Docker"), Channels: c.notifier.Names()}
+		Source: "Docker", Channels: c.notifier.Names()}
+	if c.opts.Inventory != "" {
+		report.Source = filepath.Base(c.opts.Inventory)
+	}
 	defer func() {
 		c.mu.Lock()
 		c.report = report
@@ -108,7 +111,8 @@ func (c *Checker) Run(ctx context.Context, alert bool) Report {
 	}
 	workloads, err := c.workloads(ctx)
 	if err != nil {
-		problem("Couldn't list what's running", err)
+		problem("Couldn't list what's running, trying again in a minute", err)
+		report.Next = time.Now().Add(min(time.Minute, c.opts.Interval))
 		return report
 	}
 	exploited, err := c.fetcher.Exploited(ctx)
