@@ -115,6 +115,16 @@ func (n *Notifier) Send(ctx context.Context, m Message) error {
 	return errors.Join(errs...)
 }
 
+// SendTo sends to one channel by name
+func (n *Notifier) SendTo(ctx context.Context, name string, m Message) error {
+	for _, c := range n.channels {
+		if c.name == name {
+			return c.send(ctx, m)
+		}
+	}
+	return fmt.Errorf("no channel called %s", name)
+}
+
 func (n *Notifier) post(ctx context.Context, target, bearer, gotifyKey string, body any) error {
 	payload, err := json.Marshal(body)
 	if err != nil {

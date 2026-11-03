@@ -39,8 +39,8 @@ var funcs = template.FuncMap{
 		return many
 	},
 	"stateLabel": func(s check.Status) string {
-		return map[check.Status]string{check.Unknown: "Can't tell", check.Unavailable: "No data",
-			check.Stale: "Out of date"}[s]
+		return map[check.Status]string{check.Unknown: "Version unknown", check.Unmapped: "Unmapped",
+			check.Unavailable: "Source unavailable", check.Stale: "Stale data"}[s]
 	},
 }
 
@@ -67,7 +67,7 @@ func newView(report check.Report, version string, static bool) view {
 		switch app.Status {
 		case check.Affected:
 			v.Affected = append(v.Affected, app)
-		case check.Clear, check.Quiet:
+		case check.Clear, check.Quiet, check.Watch:
 			v.Clear = append(v.Clear, app)
 		case check.Untracked:
 			v.Untracked = addUntracked(v.Untracked, app)
@@ -81,7 +81,7 @@ func newView(report check.Report, version string, static bool) view {
 			v.Unreadable = append(v.Unreadable, app)
 		}
 	}
-	blind := len(v.Blind)
+	blind, watch := len(v.Blind), report.Count(check.Watch)
 	switch {
 	case v.Pending:
 		v.Tone, v.Title = "pending", "First check is running"
@@ -97,15 +97,27 @@ func newView(report check.Report, version string, static bool) view {
 		}
 	case blind > 0 || len(report.Problems) > 0:
 		v.Tone, v.Title = "blind", "Nothing caught, but it can't see everything"
-		v.Subtitle = fmt.Sprintf("%d %s couldn't be checked, so this isn't an all-clear yet.",
-			blind, plural(blind, "app", "apps"))
+		v.Subtitle = "Something got in the way, so this isn't an all-clear yet."
+		if blind > 0 {
+			v.Subtitle = fmt.Sprintf("%d %s couldn't be checked, so this isn't an all-clear yet.",
+				blind, plural(blind, "app", "apps"))
+		}
+	case watch > 0:
+		v.Tone, v.Title = "blind", "Nothing to patch, but some need a look"
+		v.Subtitle = fmt.Sprintf("%d %s an advisory written in words rather than versions, "+
+			"with a fix newer than what you run. They're listed below.", watch, plural(watch, "has", "have"))
 	case len(v.Clear) == 0:
 		v.Tone, v.Title = "blind", "Nothing running to check"
 	default:
 		v.Tone, v.Title = "ok", "All clear"
 		v.Subtitle = "Nothing you run is caught by an advisory that has a fix out."
+		if n := len(v.Unfixed); n > 0 {
+			v.Subtitle += fmt.Sprintf(" %d %s caught by advisories with no fix yet, listed below.",
+				n, plural(n, "app is", "apps are"))
+		}
 		if n := report.Count(check.Untracked); n > 0 {
-			v.Subtitle += fmt.Sprintf(" %d more %s no advisories to watch.", n, plural(n, "has", "have"))
+			v.Subtitle += fmt.Sprintf(" %d %s covered at all, see the bottom.",
+				n, plural(n, "app isn't", "apps aren't"))
 		}
 	}
 	return v

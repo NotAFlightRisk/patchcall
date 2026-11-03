@@ -19,14 +19,16 @@ const (
 	Affected    Status = "affected"
 	Unavailable Status = "unavailable"
 	Unknown     Status = "unknown"
+	Unmapped    Status = "unmapped"
 	Stale       Status = "stale"
+	Watch       Status = "watch"
 	Clear       Status = "clear"
 	Quiet       Status = "quiet"
 	Untracked   Status = "untracked"
 )
 
-var urgency = map[Status]int{Affected: 0, Unavailable: 1, Unknown: 2, Stale: 3, Clear: 4, Quiet: 5,
-	Untracked: 6}
+var urgency = map[Status]int{Affected: 0, Unavailable: 1, Unmapped: 2, Unknown: 2, Stale: 3,
+	Watch: 4, Clear: 5, Quiet: 6, Untracked: 7}
 
 type App struct {
 	source.Resolved
@@ -60,7 +62,7 @@ func (r Report) Count(statuses ...Status) int {
 
 // Blind is true when something is stopping an honest all-clear
 func (r Report) Blind() bool {
-	return len(r.Problems) > 0 || r.Count(Unavailable, Unknown, Stale) > 0
+	return len(r.Problems) > 0 || r.Count(Unavailable, Unknown, Unmapped, Stale) > 0
 }
 
 // Worst is the highest severity among an app's hits
@@ -124,6 +126,8 @@ func (r Report) Print(out io.Writer) {
 			}
 		case Untracked:
 			fmt.Fprintf(table, "--\t%s\t%s\n", app.Name, app.Untracked)
+		case Watch:
+			fmt.Fprintf(table, "??\t%s %s\t%d to check by hand\n", app.Name, app.Version, len(app.Unreadable))
 		case Clear, Quiet:
 			fmt.Fprintf(table, "ok\t%s %s\t%d %s on file, none hit you\n",
 				app.Name, app.Version, app.OnFile, plural(app.OnFile, "advisory", "advisories"))

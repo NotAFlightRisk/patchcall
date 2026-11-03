@@ -40,8 +40,12 @@ jobs:
       - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       - name: Draft the release
         run: |
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
-          gh release create "$TAG" \
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || true)
+          if [ "$draft" = "false" ]; then
+            echo "::error::$TAG is already published, and releases here can't be changed once they are"
+            exit 1
+          fi
+          [ "$draft" = "true" ] || gh release create "$TAG" \
             --draft \
             --title "$TAG" \
             --generate-notes \

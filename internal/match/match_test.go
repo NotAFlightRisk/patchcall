@@ -32,6 +32,7 @@ func TestIntervalsReadsTheWaysPeopleWriteRanges(t *testing.T) {
 		{"< 1.2.3 || >= 2.0, < 2.1", []string{"1.0", "2.0.5"}, []string{"1.5", "2.1"}},
 		{"1.35.4", []string{"1.34.3", "1.35.4"}, []string{"1.35.5"}},
 		{"= 1.35.4", []string{"1.35.4"}, []string{"1.34.3"}},
+		{">= 2.0, 2.4.1", []string{"2.0", "2.4.1"}, []string{"1.9", "2.4.2"}},
 		{"≤ 3.1", []string{"3.1"}, []string{"3.2"}},
 	}
 	for _, tc := range cases {
@@ -177,5 +178,56 @@ func TestCheckReadsOneLowerBoundPerReleaseLine(t *testing.T) {
 	}
 	if hits := Check(version(t, "32.0.3"), advisories, Scope{}).Hits; len(hits) != 1 {
 		t.Errorf("32.0.3 is affected, got %+v", hits)
+	}
+}
+
+func TestCheckDoesntLetAnOldLineFixHideALaterRegression(t *testing.T) {
+	result := Check(version(t, "2.9.0"), []Advisory{
+		advisory("GHSA-regressed", "high",
+			Affected{Range: "< 2.5", Patched: "2.5"},
+			Affected{Range: ">= 2.8", Patched: "3.0"}),
+		advisory("GHSA-unpatched-line", "high",
+			Affected{Range: "< 2.6", Patched: "2.5"},
+			Affected{Range: ">= 2.8, < 2.10"}),
+		advisory("GHSA-overlap", "medium",
+			Affected{Range: "< 2.5", Patched: "2.5"},
+			Affected{Range: ">= 2.4", Patched: "3.0"}),
+	}, Scope{})
+	if len(result.Hits) != 2 || result.MoveTo != "3.0" {
+		t.Errorf("hits = %+v, move to %q", result.Hits, result.MoveTo)
+	}
+	if len(result.Unfixed) != 1 || result.Unfixed[0].ID != "GHSA-unpatched-line" {
+		t.Errorf("unfixed = %+v", result.Unfixed)
+	}
+}
+
+func TestPrereleasesSortBelowTheirRelease(t *testing.T) {
+	advisories := []Advisory{advisory("GHSA-rc", "high", Affected{Range: "< 2.4.1", Patched: "2.4.1"})}
+	if hits := Check(version(t, "2.4.1-rc1"), advisories, Scope{}).Hits; len(hits) != 1 {
+		t.Errorf("2.4.1-rc1 is before the fix, got %+v", hits)
+	}
+	if hits := Check(version(t, "2.4.1"), advisories, Scope{}).Hits; len(hits) != 0 {
+		t.Errorf("2.4.1 is the fix, got %+v", hits)
+	}
+	if got := Clean("v12.0-RC5-ls3"); got != "v12.0-RC5" {
+		t.Errorf("Clean kept %q", got)
+	}
+}
+
+func TestVersionsKeepAllTheirParts(t *testing.T) {
+	if !version(t, "1.2.3.4.1").Less(version(t, "1.2.3.4.2")) {
+		t.Error("the fifth part should count")
+	}
+	if _, ok := Parse("1.2.3.4.5.6.7"); ok {
+		t.Error("seven parts should be refused, not cut short")
+	}
+}
+
+func TestFirstClearSkipsAFixAnotherRangeStillCatches(t *testing.T) {
+	result := Check(version(t, "2.3"), []Advisory{advisory("GHSA-overlap", "high",
+		Affected{Range: "< 2.5", Patched: "2.5"},
+		Affected{Range: ">= 2.4", Patched: "3.0"})}, Scope{})
+	if result.MoveTo != "3.0" {
+		t.Errorf("move to %q, but 2.5 is still caught by the >= 2.4 range", result.MoveTo)
 	}
 }

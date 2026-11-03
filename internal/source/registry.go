@@ -34,7 +34,7 @@ type Registry struct {
 }
 
 // candidates is how many of the newest version tags get a HEAD before giving up
-const candidates = 30
+const candidates = 50
 
 // VersionFromDigest finds the version tag that shares a digest with the running image
 func (r *Registry) VersionFromDigest(ctx context.Context, ref Ref, digests []string) (string, error) {
@@ -91,7 +91,11 @@ func (r *Registry) tags(ctx context.Context, ref Ref) ([]string, error) {
 		all = append(all, page.Tags...)
 		path = ""
 		if found := nextPage.FindStringSubmatch(res.Header.Get("Link")); found != nil {
-			path = strings.TrimPrefix(found[1], "/v2/"+ref.Path)
+			next, err := url.Parse(found[1])
+			if err != nil || (next.Host != "" && next.Host != ref.api()) {
+				return nil, fmt.Errorf("%s sent a next page somewhere else", ref.api())
+			}
+			path = strings.TrimPrefix(next.RequestURI(), "/v2/"+ref.Path)
 		}
 	}
 	return all, nil

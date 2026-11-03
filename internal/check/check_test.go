@@ -15,6 +15,7 @@ import (
 
 type fixture struct {
 	checker  *Checker
+	hook     string
 	messages []notify.Message
 	refuse   bool
 }
@@ -60,7 +61,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	checker.fetcher.API, checker.fetcher.KEVURL = github.URL, github.URL+"/kev"
-	fx.checker = checker
+	fx.checker, fx.hook = checker, hook.URL
 	return fx
 }
 
@@ -70,7 +71,7 @@ func TestRunSortsAppsByWhatNeedsDoing(t *testing.T) {
 	for _, app := range report.Apps {
 		got = append(got, app.Status)
 	}
-	want := []Status{Affected, Unknown, Quiet}
+	want := []Status{Affected, Unmapped, Quiet}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Fatalf("statuses = %v, want %v", got, want)
 	}
@@ -118,5 +119,46 @@ func TestStateSurvivesARestart(t *testing.T) {
 	again.Run(context.Background(), true)
 	if len(fx.messages) != 1 {
 		t.Errorf("messages = %d, a restart shouldn't re-alert", len(fx.messages))
+	}
+}
+
+func TestRunOnlyRetriesTheChannelThatFailed(t *testing.T) {
+	fx := newFixture(t)
+	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer broken.Close()
+	fx.checker.notifier = notify.New(notify.Config{WebhookURL: fx.hook, NtfyURL: broken.URL + "/topic"},
+		http.DefaultClient)
+	fx.checker.Run(context.Background(), true)
+	fx.checker.Run(context.Background(), true)
+	if len(fx.messages) != 1 {
+		t.Errorf("webhook got %d messages, want 1 however often ntfy fails", len(fx.messages))
+	}
+}
+
+func TestANewChannelGetsWhatsAlreadyOpen(t *testing.T) {
+	fx := newFixture(t)
+	fx.checker.notifier = notify.New(notify.Config{}, http.DefaultClient)
+	fx.checker.Run(context.Background(), true)
+	fx.checker.notifier = notify.New(notify.Config{WebhookURL: fx.hook}, http.DefaultClient)
+	fx.checker.Run(context.Background(), true)
+	if len(fx.messages) != 1 {
+		t.Errorf("messages = %d, the open match should reach the new channel", len(fx.messages))
+	}
+	if len(fx.checker.Report().Feed) != 1 {
+		t.Error("the feed should have the match from the first run")
+	}
+}
+
+func TestACorruptStateFileIsKeptNotOverwritten(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "state.json")
+	os.WriteFile(file, []byte(`{"alerted": {"trunc`), 0o600)
+	if _, err := New(Options{Inventory: "x.yaml", StateFile: file}); err != nil {
+		t.Fatal(err)
+	}
+	kept, _ := filepath.Glob(file + ".broken-*")
+	if len(kept) != 1 {
+		t.Errorf("want the broken file kept aside, found %v", kept)
 	}
 }

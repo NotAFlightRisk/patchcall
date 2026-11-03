@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func fakeGitHub(t *testing.T, handler http.HandlerFunc) *Fetcher {
@@ -93,5 +94,46 @@ func TestCachedServesTheLastGoodFetch(t *testing.T) {
 	}
 	if _, ok := f.Cached("never/fetched"); ok {
 		t.Error("a repo never fetched has nothing cached")
+	}
+}
+
+func TestAHalfFinishedFetchKeepsTheLastWholeOne(t *testing.T) {
+	round := 1
+	f := fakeGitHub(t, func(w http.ResponseWriter, r *http.Request) {
+		after := r.URL.Query().Get("after")
+		switch {
+		case after == "" && round == 1:
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?after=x>; rel="next"`, r.Host, r.URL.Path))
+			w.Write([]byte(`[{"ghsa_id":"GHSA-1"}]`))
+		case after == "":
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?after=y>; rel="next"`, r.Host, r.URL.Path))
+			w.Write([]byte(`[{"ghsa_id":"GHSA-new"}]`))
+		case after == "x":
+			w.Write([]byte(`[{"ghsa_id":"GHSA-2"}]`))
+		default:
+			w.WriteHeader(http.StatusBadGateway)
+		}
+	})
+	if _, err := f.Advisories(context.Background(), "a/b"); err != nil {
+		t.Fatal(err)
+	}
+	round = 2
+	if _, err := f.Advisories(context.Background(), "a/b"); err == nil {
+		t.Fatal("want the second page's failure")
+	}
+	got, ok := f.Cached("a/b")
+	if !ok || len(got) != 2 || got[0].ID != "GHSA-1" || got[1].ID != "GHSA-2" {
+		t.Errorf("cached = %+v, want the whole first fetch", got)
+	}
+}
+
+func TestATooManyRequestsWithNoHeadersStillBacksOff(t *testing.T) {
+	f := fakeGitHub(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	_, err := f.Advisories(context.Background(), "a/b")
+	var limited RateLimited
+	if !errors.As(err, &limited) || time.Until(limited.Reset) < 30*time.Minute {
+		t.Errorf("got %v, want a back-off of about an hour", err)
 	}
 }

@@ -70,6 +70,7 @@ func (d *Docker) get(ctx context.Context, path string, out any) error {
 // Workloads lists running containers, one entry per image however many run it
 func (d *Docker) Workloads(ctx context.Context) ([]Workload, error) {
 	var containers []struct {
+		ID      string `json:"Id"`
 		Names   []string
 		Image   string
 		ImageID string
@@ -80,7 +81,10 @@ func (d *Docker) Workloads(ctx context.Context) ([]Workload, error) {
 	var out []Workload
 	seen := map[string]int{}
 	for _, c := range containers {
-		name := strings.TrimPrefix(c.Names[0], "/")
+		name := c.ID[:min(12, len(c.ID))]
+		if len(c.Names) > 0 {
+			name = strings.TrimPrefix(c.Names[0], "/")
+		}
 		if i, ok := seen[c.ImageID]; ok {
 			out[i].Containers = append(out[i].Containers, name)
 			continue

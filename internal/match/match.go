@@ -59,12 +59,13 @@ func Check(running Version, advisories []Advisory, scope Scope) Result {
 		for _, a := range affected {
 			fixes = append(fixes, Patched(a.Patched)...)
 		}
-		if len(affected) == 0 || onFixedLine(running, fixes) {
+		if len(affected) == 0 {
 			continue
 		}
-		caught, readable := catches(running, affected)
+		reached, readable := reaching(running, affected)
 		switch {
-		case caught:
+		case len(reached) > 0 && onFixedLine(running, fixes, reached):
+		case len(reached) > 0:
 			fix := firstClear(running, fixes, affected)
 			if fix == nil {
 				result.Unfixed = append(result.Unfixed, Hit{Advisory: advisory})
@@ -74,7 +75,7 @@ func Check(running Version, advisories []Advisory, scope Scope) Result {
 			if best.Less(fix.Version) {
 				best, result.MoveTo = fix.Version, fix.Raw
 			}
-		case !readable:
+		case !readable && !onFixedLine(running, fixes, nil):
 			if fix := lowestAbove(running, fixes); fix != nil {
 				result.Unreadable = append(result.Unreadable, Hit{Advisory: advisory, Fix: fix.Raw})
 			}
@@ -86,8 +87,14 @@ func Check(running Version, advisories []Advisory, scope Scope) Result {
 	return result
 }
 
-// catches says whether any readable range reaches the version, and if any couldn't be read
-func catches(version Version, affected []Affected) (caught, readable bool) {
+// reach is one readable range that catches a version, with its own entry's fixes
+type reach struct {
+	interval Interval
+	fixes    []Fix
+}
+
+// reaching lists the readable ranges that catch the version, and says if any couldn't be read
+func reaching(version Version, affected []Affected) (reached []reach, readable bool) {
 	readable = true
 	for _, a := range affected {
 		intervals := Intervals(a.Range)
@@ -96,10 +103,12 @@ func catches(version Version, affected []Affected) (caught, readable bool) {
 		}
 		fixes := Patched(a.Patched)
 		for _, iv := range intervals {
-			caught = caught || iv.Capped(fixes).Contains(version)
+			if capped := iv.Capped(fixes); capped.Contains(version) {
+				reached = append(reached, reach{capped, fixes})
+			}
 		}
 	}
-	return caught, readable
+	return reached, readable
 }
 
 // firstClear is the lowest fix above you that the advisory no longer catches
@@ -112,7 +121,8 @@ func firstClear(running Version, fixes []Fix, affected []Affected) *Fix {
 	}
 	slices.SortFunc(above, func(a, b Fix) int { return a.Version.Compare(b.Version) })
 	for i, fix := range above {
-		if caught, _ := catches(fix.Version, affected); !caught || onFixedLine(fix.Version, fixes) {
+		reached, _ := reaching(fix.Version, affected)
+		if len(reached) == 0 || onFixedLine(fix.Version, fixes, reached) {
 			return &above[i]
 		}
 	}
@@ -122,17 +132,25 @@ func firstClear(running Version, fixes []Fix, affected []Affected) *Fix {
 	return &above[len(above)-1]
 }
 
-// onFixedLine is true when your major line already got its fix and nothing newer is due
-func onFixedLine(running Version, fixes []Fix) bool {
+// onFixedLine is true when your major line already got its fix at or below you and nothing
+// newer is due on it, so a range still catching you is another line's. That only holds for
+// ranges with a fix that don't start inside your line, as those are about your line itself
+func onFixedLine(version Version, fixes []Fix, reached []reach) bool {
 	fixedBelow := false
 	for _, fix := range fixes {
-		if fix.Version[0] != running[0] {
+		if fix.Version[0] != version[0] {
 			continue
 		}
-		if running.Less(fix.Version) {
+		if version.Less(fix.Version) {
 			return false
 		}
 		fixedBelow = true
+	}
+	for _, r := range reached {
+		startsInLine := r.interval.Lo != (Version{}) && r.interval.Lo[0] >= version[0]
+		if len(r.fixes) == 0 || startsInLine {
+			return false
+		}
 	}
 	return fixedBelow
 }

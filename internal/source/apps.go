@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 
 	"go.yaml.in/yaml/v3"
@@ -42,12 +43,14 @@ func LoadMap(overrides string) (Map, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return m, nil
 	}
+	yours := Map{}
 	if err == nil {
-		err = m.add(raw, true)
+		err = yours.add(raw, true)
 	}
 	if err != nil {
 		return m, fmt.Errorf("%s: %w", overrides, err)
 	}
+	maps.Copy(m, yours)
 	return m, nil
 }
 
