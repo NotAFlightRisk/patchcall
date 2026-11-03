@@ -77,9 +77,24 @@
     </section>
     {{- end}}
 
+    {{- with .Unreadable}}
+    <section aria-labelledby="unreadable">
+      <h2 id="unreadable">Worth a look by hand</h2>
+      <p class="note">The affected range is written in words, but the fix is newer than what you run.</p>
+      <ul class="rows">
+        {{- range .}}
+        <li class="row">
+          <div class="app"><h3>{{.Name}} <span class="version">{{.Version}}</span></h3></div>
+          {{template "hits" .Unreadable}}
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+
     {{- with .Clear}}
     <section aria-labelledby="clear">
-      <h2 id="clear">Clear</h2>
+      <h2 id="clear">Nothing to patch</h2>
       <ul class="clear">
         {{- range .}}
         <li class="{{.Status}}{{if .Unfixed}} unfixed{{end}}">
@@ -98,7 +113,7 @@
     {{- end}}
 
     {{- with .Unfixed}}
-    <section class="later" aria-labelledby="unfixed">
+    <section class="later nofix" aria-labelledby="unfixed">
       <h2 id="unfixed">No fix out yet</h2>
       <p class="note">These catch your version, but there's nothing to move to. You'll get an alert when there is.</p>
       <ul class="rows">
@@ -112,20 +127,6 @@
     </section>
     {{- end}}
 
-    {{- with .Unreadable}}
-    <section class="later" aria-labelledby="unreadable">
-      <h2 id="unreadable">Worth a look by hand</h2>
-      <p class="note">The affected range is written in words, but the fix is newer than what you run.</p>
-      <ul class="rows">
-        {{- range .}}
-        <li class="row">
-          <div class="app"><h3>{{.Name}} <span class="version">{{.Version}}</span></h3></div>
-          {{template "hits" .Unreadable}}
-        </li>
-        {{- end}}
-      </ul>
-    </section>
-    {{- end}}
     {{- with .Untracked}}
     <section class="later" aria-labelledby="untracked">
       <h2 id="untracked">Not covered</h2>

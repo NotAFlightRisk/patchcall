@@ -180,6 +180,9 @@ func (c *Checker) assess(ctx context.Context, r source.Resolved, exploited map[s
 		app.Status = Untracked
 		return app
 	}
+	if r.Repo == "" {
+		app.Status = Unmapped
+	}
 	if r.Problem != "" {
 		return app
 	}

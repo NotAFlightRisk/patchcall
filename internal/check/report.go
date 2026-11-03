@@ -19,6 +19,7 @@ const (
 	Affected    Status = "affected"
 	Unavailable Status = "unavailable"
 	Unknown     Status = "unknown"
+	Unmapped    Status = "unmapped"
 	Stale       Status = "stale"
 	Watch       Status = "watch"
 	Clear       Status = "clear"
@@ -26,8 +27,8 @@ const (
 	Untracked   Status = "untracked"
 )
 
-var urgency = map[Status]int{Affected: 0, Unavailable: 1, Unknown: 2, Stale: 3, Watch: 4,
-	Clear: 5, Quiet: 6, Untracked: 7}
+var urgency = map[Status]int{Affected: 0, Unavailable: 1, Unmapped: 2, Unknown: 2, Stale: 3,
+	Watch: 4, Clear: 5, Quiet: 6, Untracked: 7}
 
 type App struct {
 	source.Resolved
@@ -61,7 +62,7 @@ func (r Report) Count(statuses ...Status) int {
 
 // Blind is true when something is stopping an honest all-clear
 func (r Report) Blind() bool {
-	return len(r.Problems) > 0 || r.Count(Unavailable, Unknown, Stale) > 0
+	return len(r.Problems) > 0 || r.Count(Unavailable, Unknown, Unmapped, Stale) > 0
 }
 
 // Worst is the highest severity among an app's hits

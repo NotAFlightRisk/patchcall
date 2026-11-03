@@ -71,7 +71,7 @@ func TestRunSortsAppsByWhatNeedsDoing(t *testing.T) {
 	for _, app := range report.Apps {
 		got = append(got, app.Status)
 	}
-	want := []Status{Affected, Unknown, Quiet}
+	want := []Status{Affected, Unmapped, Quiet}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Fatalf("statuses = %v, want %v", got, want)
 	}

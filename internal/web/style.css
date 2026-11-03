@@ -30,6 +30,7 @@
 
   color-scheme: dark;
   accent-color: var(--link);
+  scrollbar-color: var(--line) var(--surface);
 }
 
 .affected { --tone: var(--danger); }
@@ -184,14 +185,14 @@ section {
 
 .move {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-2);
   align-self: start;
   font-size: var(--step-2);
   color: var(--text-muted);
 
   .arrow { width: 1.25rem; height: 0.75rem; color: var(--text-faint); }
-  .target { color: var(--text); font-weight: 650; }
+  .target { color: var(--text); font-size: var(--step-3); font-weight: 650; }
 }
 
 .state {
@@ -230,6 +231,8 @@ section {
     color: var(--link);
     font-size: var(--step-0);
     cursor: pointer;
+
+    &::marker { color: var(--text-faint); }
   }
 
   .hits { margin-top: var(--space-2); }
@@ -249,7 +252,7 @@ section {
 
   &.critical { --sev: var(--danger); }
   &.high { --sev: var(--high); }
-  &.medium, &.moderate { --sev: var(--warn); }
+  &.low { --sev: var(--text-faint); }
 }
 
 .kev {
@@ -264,16 +267,19 @@ section {
 .clear {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: var(--space-2);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
 
   li {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0 var(--space-3);
+    margin: -1px 0 0 -1px;
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--surface-raised);
+    border: solid var(--line);
+    border-width: 1px 0 0 1px;
   }
 
   .name { font-weight: 600; }
@@ -295,6 +301,11 @@ section {
   h3, .summary { color: var(--text-muted); }
 }
 
+.nofix {
+  .severity { --sev: var(--text-faint); }
+  .id { color: var(--text-muted); }
+}
+
 footer {
   display: grid;
   gap: var(--space-1);
@@ -306,5 +317,11 @@ footer {
 
 @media (max-width: 40rem) {
   .row { grid-template-columns: 1fr; }
-  .status h1 { font-size: var(--step-2); }
+  .move .target { font-size: var(--step-2); }
+  .hits .summary { font-size: var(--step-0); }
+
+  .status {
+    padding-block: var(--space-4) var(--space-5);
+    h1 { font-size: var(--step-2); }
+  }
 }

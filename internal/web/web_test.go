@@ -68,6 +68,9 @@ func TestPageRendersEveryState(t *testing.T) {
 				ID: "GHSA-1", Severity: "high", Summary: "<script>"}, Fix: "1.36.0", KEV: true}}}},
 		{Resolved: source.Resolved{Name: "Open WebUI", Problem: "No version"}, Status: check.Unknown},
 		{Resolved: source.Resolved{Name: "postgres", Untracked: "No advisories"}, Status: check.Untracked},
+		{Resolved: source.Resolved{Name: "Immich", Version: "2.7.0"}, Status: check.Watch,
+			Result: match.Result{Unreadable: []match.Hit{{Advisory: match.Advisory{ID: "GHSA-2"}, Fix: "3.0"}},
+				Unfixed: []match.Hit{{Advisory: match.Advisory{ID: "GHSA-3"}}}}},
 	}}
 	var out strings.Builder
 	if err := page.Execute(&out, newView(report, "test", false)); err != nil {
@@ -75,7 +78,7 @@ func TestPageRendersEveryState(t *testing.T) {
 	}
 	html := out.String()
 	for _, want := range []string{"1 app to patch", "1.36.0", "Exploited in the wild", "No version",
-		"Not covered", "&lt;script&gt;"} {
+		"Not covered", "&lt;script&gt;", "Worth a look by hand", "1 to check by hand", "No fix out yet"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("page is missing %q", want)
 		}

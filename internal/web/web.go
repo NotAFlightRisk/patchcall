@@ -39,8 +39,8 @@ var funcs = template.FuncMap{
 		return many
 	},
 	"stateLabel": func(s check.Status) string {
-		return map[check.Status]string{check.Unknown: "Can't tell", check.Unavailable: "No data",
-			check.Stale: "Out of date"}[s]
+		return map[check.Status]string{check.Unknown: "Version unknown", check.Unmapped: "Unmapped",
+			check.Unavailable: "Source unavailable", check.Stale: "Stale data"}[s]
 	},
 }
 
@@ -112,8 +112,11 @@ func newView(report check.Report, version string, static bool) view {
 		v.Tone, v.Title = "ok", "All clear"
 		v.Subtitle = "Nothing you run is caught by an advisory that has a fix out."
 		if n := len(v.Unfixed); n > 0 {
-			v.Subtitle += fmt.Sprintf(" %d %s caught by advisories with no fix yet, listed at the bottom.",
+			v.Subtitle += fmt.Sprintf(" %d %s caught by advisories with no fix yet, listed below.",
 				n, plural(n, "app is", "apps are"))
+		}
+		if n := report.Count(check.Untracked); n > 0 {
+			v.Subtitle += fmt.Sprintf(" %d %s covered at all, see the bottom.", n, plural(n, "isn't", "aren't"))
 		}
 	}
 	return v
