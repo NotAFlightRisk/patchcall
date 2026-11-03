@@ -78,5 +78,13 @@ func (s State) save(file string) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), file)
+	if err := os.Rename(tmp.Name(), file); err != nil {
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(file))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }

@@ -15,15 +15,17 @@ const release = 6
 
 var (
 	leading    = regexp.MustCompile(`^[vV]?(\d+(?:\.\d+){0,5})`)
+	tooLong    = regexp.MustCompile(`^\.\d`)
 	prerelease = regexp.MustCompile(`(?i)^[-.~_]?(alpha|beta|rc|pre|preview|dev)[0-9.]*`)
 )
 
-// Parse reads the numeric front of a version, so -ls42 or a commit hash on the end is ignored
+// Parse reads the numeric front of a version, so -ls42 or a commit hash on the end is ignored.
+// More than six numeric parts is refused rather than cut short
 func Parse(raw string) (Version, bool) {
 	var version Version
 	raw = strings.TrimSpace(raw)
 	found := leading.FindStringSubmatchIndex(raw)
-	if found == nil {
+	if found == nil || tooLong.MatchString(raw[found[1]:]) {
 		return version, false
 	}
 	for i, part := range strings.Split(raw[found[2]:found[3]], ".") {

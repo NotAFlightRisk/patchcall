@@ -132,10 +132,11 @@ func firstClear(running Version, fixes []Fix, affected []Affected) *Fix {
 	return &above[len(above)-1]
 }
 
-// onFixedLine is true when your major line already got its fix at or below you, nothing
-// newer is due on it, and every range still catching you started before that fix
+// onFixedLine is true when your major line already got its fix at or below you and nothing
+// newer is due on it, so a range still catching you is another line's. That only holds for
+// ranges with a fix that don't start inside your line, as those are about your line itself
 func onFixedLine(version Version, fixes []Fix, reached []reach) bool {
-	var lineFix *Version
+	fixedBelow := false
 	for _, fix := range fixes {
 		if fix.Version[0] != version[0] {
 			continue
@@ -143,19 +144,15 @@ func onFixedLine(version Version, fixes []Fix, reached []reach) bool {
 		if version.Less(fix.Version) {
 			return false
 		}
-		if lineFix == nil || lineFix.Less(fix.Version) {
-			lineFix = &fix.Version
-		}
-	}
-	if lineFix == nil {
-		return false
+		fixedBelow = true
 	}
 	for _, r := range reached {
-		if len(r.fixes) == 0 || lineFix.Less(r.interval.Lo) {
+		startsInLine := r.interval.Lo != (Version{}) && r.interval.Lo[0] >= version[0]
+		if len(r.fixes) == 0 || startsInLine {
 			return false
 		}
 	}
-	return true
+	return fixedBelow
 }
 
 func lowestAbove(running Version, fixes []Fix) *Fix {
