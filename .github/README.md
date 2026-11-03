@@ -34,12 +34,12 @@ That's different from an image scanner, which buries you in base-image CVEs and 
 
 A few things it does to keep the noise down, and to stay honest:
 
-- It only alerts when a fix exists. Advisories with no fix yet sit on the page, greyed out, until there is one.
+- It only alerts when a fix exists. Advisories with no fix yet sit at the bottom of the page, greyed out, until there is one.
 - If it can't tell what version you're on, or the app isn't one it knows, it says so rather than calling it clear. Green means it checked.
-- Ranges written in words ("anything before May") don't get guessed at. If the fix is newer than you, they're listed for you to look at by hand.
+- Ranges written in words ("anything before May") don't get guessed at. If the fix is newer than you, they're listed for you to look at by hand, and the page stays off green until you're past it.
 - Exploited-in-the-wild advisories (from [CISA's KEV list](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)) get a badge.
 
-It knows the 50-odd most popular self-hosted images out of the box, and reads the `org.opencontainers.image.source` label for everything else. Nothing leaves your box apart from the requests to GitHub and the image registries.
+It knows the 50-odd most popular self-hosted images out of the box, and reads the `org.opencontainers.image.source` label for everything else. It talks to GitHub, CISA and the image registries, plus whichever alert channels you set up, and nothing else.
 
 ---
 
@@ -58,7 +58,7 @@ Then open [localhost:7282](http://localhost:7282). The first check takes a minut
 
 It puts [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) in front of the Docker socket, so Patchcall can list containers and images and nothing else. Mounting the socket straight in, even read-only, hands over the whole Docker API, which is root on your host.
 
-It works without a GitHub token, but then GitHub allows 60 requests an hour and each check spends one or two per app, so with more than 40-odd apps a check finishes in two goes, an hour apart. A [fine-grained token](https://github.com/settings/personal-access-tokens/new) with public repo access and no permissions at all lifts that to 5,000, and with one, asking about advisories that haven't changed doesn't count at all. Put it in `GITHUB_TOKEN`.
+It works without a GitHub token, but then GitHub allows 60 requests an hour and each check spends roughly one or two per app (more for the few with over 100 advisories), so with more than 40-odd apps a check finishes in two goes, an hour apart. A [fine-grained token](https://github.com/settings/personal-access-tokens/new) with public repo access and no permissions at all lifts that to 5,000, and with one, asking about advisories that haven't changed doesn't count at all. Put it in `GITHUB_TOKEN`.
 
 ### Docker run
 
@@ -126,7 +126,7 @@ Out of the box it only answers to `localhost` and IP addresses, which stops a do
 
 ### Alerts
 
-Set up as many as you like. Each one gets a message per app, the first time a fixed advisory catches it.
+Set up as many as you like. Each one gets a message the first time an advisory with a fix out catches the version you run, and if one channel's down, it's retried on the next check without the others hearing it twice.
 
 | Channel | Variables |
 | --- | --- |

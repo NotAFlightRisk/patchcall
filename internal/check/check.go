@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -46,7 +47,11 @@ type Checker struct {
 func New(opts Options) (*Checker, error) {
 	state, err := loadState(opts.StateFile)
 	if err != nil {
-		slog.Warn("state file unreadable, starting afresh", "file", opts.StateFile, "err", err)
+		broken := opts.StateFile + ".broken-" + time.Now().Format("20060102-150405")
+		if moveErr := os.Rename(opts.StateFile, broken); moveErr != nil {
+			return nil, fmt.Errorf("state file is unreadable (%w) and couldn't be moved aside: %w", err, moveErr)
+		}
+		slog.Warn("state file unreadable, moved it aside and starting afresh", "kept", broken, "err", err)
 	}
 	c := &Checker{
 		opts:     opts,
@@ -128,16 +133,18 @@ func (c *Checker) Run(ctx context.Context, alert bool) Report {
 	} else {
 		c.fetcher.Forget()
 	}
-	if alert {
+	c.state.Pages, c.state.KEV = c.fetcher.Pages, c.fetcher.KEV
+	if err := c.state.save(c.opts.StateFile); err != nil {
+		problem("Couldn't save state, so alerts are held back until it can", err)
+	} else if alert {
 		for _, err := range c.alert(ctx, report.Apps) {
 			problem("A notification didn't go out, it'll be retried next check", err)
 		}
+		if err := c.state.save(c.opts.StateFile); err != nil {
+			problem("Couldn't save state", err)
+		}
 	}
 	report.Feed = c.state.Feed
-	c.state.Pages, c.state.KEV = c.fetcher.Pages, c.fetcher.KEV
-	if err := c.state.save(c.opts.StateFile); err != nil {
-		problem("Couldn't save state", err)
-	}
 	slog.Info("checked", "apps", len(report.Apps), "affected", report.Count(Affected),
 		"next", report.Next.Format(time.DateTime))
 	return report
@@ -213,6 +220,8 @@ func (c *Checker) assess(ctx context.Context, r source.Resolved, exploited map[s
 		app.Status = Affected
 	case app.Stale:
 		app.Status = Stale
+	case len(app.Unreadable) > 0:
+		app.Status = Watch
 	case app.OnFile == 0:
 		app.Status = Quiet
 	default:
@@ -237,29 +246,40 @@ func fetchProblem(err error, cached bool) string {
 	return text
 }
 
+// alert sends each channel the matches it hasn't had yet, and feeds new ones to RSS. A match
+// is one advisory catching one version of an app, so moving to a version that's still caught
+// alerts again
 func (c *Checker) alert(ctx context.Context, apps []App) []error {
 	var errs []error
+	now := time.Now()
 	for _, app := range apps {
-		var fresh []match.Hit
+		key := func(hit match.Hit) string { return app.Repo + " " + app.Version + " " + hit.ID }
 		for _, hit := range app.Hits {
-			if _, done := c.state.Alerted[app.Repo+" "+hit.ID]; !done {
-				fresh = append(fresh, hit)
+			if _, seen := c.state.Seen[key(hit)]; !seen {
+				c.state.Seen[key(hit)] = now
+				c.state.Feed = append(c.state.Feed, FeedItem{App: app.Name, Version: app.Version,
+					Hit: hit, Seen: now})
 			}
 		}
-		if len(fresh) == 0 {
-			continue
+		for _, channel := range c.notifier.Names() {
+			var fresh []match.Hit
+			for _, hit := range app.Hits {
+				if _, done := c.state.Alerted[channel+" "+key(hit)]; !done {
+					fresh = append(fresh, hit)
+				}
+			}
+			if len(fresh) == 0 {
+				continue
+			}
+			if err := c.notifier.SendTo(ctx, channel, c.message(app, fresh)); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", channel, err))
+				continue
+			}
+			for _, hit := range fresh {
+				c.state.Alerted[channel+" "+key(hit)] = now
+			}
 		}
-		if err := c.notifier.Send(ctx, c.message(app, fresh)); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		now := time.Now()
-		for _, hit := range fresh {
-			c.state.Alerted[app.Repo+" "+hit.ID] = now
-			c.state.Feed = append(c.state.Feed, FeedItem{App: app.Name, Version: app.Version,
-				Hit: hit, Seen: now})
-		}
-		c.state.Feed = c.state.Feed[max(0, len(c.state.Feed)-feedLength):]
 	}
+	c.state.Feed = c.state.Feed[max(0, len(c.state.Feed)-feedLength):]
 	return errs
 }

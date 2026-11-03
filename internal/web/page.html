@@ -82,10 +82,15 @@
       <h2 id="clear">Clear</h2>
       <ul class="clear">
         {{- range .}}
-        <li class="{{.Status}}">
+        <li class="{{.Status}}{{if .Unfixed}} unfixed{{end}}">
           <span class="name">{{.Name}}</span>
           <span class="version">{{.Version}}</span>
-          <span class="count">{{if eq .OnFile 0}}none published{{else}}{{.OnFile}} on file{{end}}</span>
+          <span class="count">
+            {{- if eq .Status "watch"}}{{len .Unreadable}} to check by hand
+            {{- else if .Unfixed}}{{len .Unfixed}} with no fix yet
+            {{- else if eq .OnFile 0}}none published
+            {{- else}}{{.OnFile}} on file{{end -}}
+          </span>
         </li>
         {{- end}}
       </ul>

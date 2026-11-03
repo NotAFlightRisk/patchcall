@@ -62,8 +62,8 @@ func (r *Resolver) Resolve(ctx context.Context, w Workload) Resolved {
 	}
 	out.Version, out.VersionFrom = r.version(ctx, w, ref, app)
 	if out.Version == "" {
-		out.Problem = fmt.Sprintf("No version label, and the :%s tag doesn't match a "+
-			"version tag on the registry.", ref.Tag)
+		out.Problem = fmt.Sprintf("No version label, and the :%s tag doesn't match any of "+
+			"the newest version tags on the registry.", ref.Tag)
 		if strings.HasPrefix(out.VersionFrom, "registry") {
 			out.Problem, out.VersionFrom = out.VersionFrom, ""
 		}
@@ -112,13 +112,14 @@ func (r *Resolver) version(ctx context.Context, w Workload, ref Ref, app App) (s
 	if digest == "" || r.Registry == nil {
 		return "", ""
 	}
-	tag, known := r.Digests[digest]
+	key := ref.Name() + "@" + digest
+	tag, known := r.Digests[key]
 	if !known {
 		var err error
 		if tag, err = r.Registry.VersionFromDigest(ctx, ref, w.Digests); err != nil {
 			return "", "registry lookup failed: " + err.Error()
 		}
-		r.Digests[digest] = tag
+		r.Digests[key] = tag
 	}
 	if tag == "" {
 		return "", ""

@@ -55,16 +55,21 @@ var ErrNotFound = errors.New("GitHub has no such repo, or it's private")
 
 var nextLink = regexp.MustCompile(`<([^>]+)>;\s*rel="next"`)
 
-// Advisories lists a repo's published advisories, minus withdrawn ones
+// Advisories lists a repo's published advisories, minus withdrawn ones. Pages only replace
+// the cache once every page has come back, so a half-finished fetch never sticks
 func (f *Fetcher) Advisories(ctx context.Context, repo string) ([]match.Advisory, error) {
 	var all []match.Advisory
-	next := f.firstPage(repo)
-	for next != "" {
+	fetched := map[string]Page{}
+	for next := f.firstPage(repo); next != ""; {
 		page, err := f.page(ctx, next)
 		if err != nil {
 			return nil, err
 		}
+		fetched[next] = page
 		all, next = append(all, page.Advisories...), page.Next
+	}
+	for url, page := range fetched {
+		f.Pages[url], f.touched[url] = page, true
 	}
 	return all, nil
 }
@@ -74,7 +79,6 @@ func (f *Fetcher) firstPage(repo string) string {
 }
 
 func (f *Fetcher) page(ctx context.Context, url string) (Page, error) {
-	f.touched[url] = true
 	cached, known := f.Pages[url]
 	res, err := f.get(ctx, url, cached.ETag, "application/vnd.github+json")
 	if err != nil {
@@ -87,7 +91,7 @@ func (f *Fetcher) page(ctx context.Context, url string) (Page, error) {
 	case res.StatusCode == http.StatusNotFound:
 		return Page{}, ErrNotFound
 	case res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests:
-		if reset, limited := rateLimit(res.Header); limited {
+		if reset, limited := rateLimit(res); limited {
 			return Page{}, RateLimited{reset}
 		}
 	}
@@ -129,7 +133,6 @@ func (f *Fetcher) page(ctx context.Context, url string) (Page, error) {
 		}
 		page.Advisories = append(page.Advisories, advisory)
 	}
-	f.Pages[url] = page
 	return page, nil
 }
 
@@ -182,13 +185,18 @@ func (f *Fetcher) get(ctx context.Context, url, etag, accept string) (*http.Resp
 	return res, nil
 }
 
-func rateLimit(header http.Header) (time.Time, bool) {
-	if seconds, err := strconv.Atoi(header.Get("Retry-After")); err == nil {
-		return time.Now().Add(time.Duration(seconds) * time.Second), true
+// rateLimit works out when to try again, falling back to an hour when GitHub doesn't say
+func rateLimit(res *http.Response) (time.Time, bool) {
+	now := time.Now()
+	if seconds, err := strconv.Atoi(res.Header.Get("Retry-After")); err == nil && seconds > 0 {
+		return now.Add(time.Duration(seconds) * time.Second), true
 	}
-	if header.Get("X-RateLimit-Remaining") != "0" {
+	if res.StatusCode != http.StatusTooManyRequests && res.Header.Get("X-RateLimit-Remaining") != "0" {
 		return time.Time{}, false
 	}
-	reset, _ := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64)
-	return time.Unix(reset, 0), true
+	reset, _ := strconv.ParseInt(res.Header.Get("X-RateLimit-Reset"), 10, 64)
+	if at := time.Unix(reset, 0); at.After(now) {
+		return at, true
+	}
+	return now.Add(time.Hour), true
 }

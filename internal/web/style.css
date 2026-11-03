@@ -288,6 +288,8 @@ section {
   }
 
   .quiet .count { color: var(--text-faint); }
+  .unfixed .count { color: var(--text-muted); }
+  .watch .count { color: var(--warn); }
 }
 
 .later {

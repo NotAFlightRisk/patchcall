@@ -13,7 +13,7 @@ type Interval struct {
 	HiIncl bool
 }
 
-const num = `[vV]?\d+(?:\.\d+){0,3}(?:-[0-9A-Za-z.]+)?`
+const num = `[vV]?\d+(?:\.\d+){0,5}(?:-[0-9A-Za-z.]+)?`
 
 var (
 	token     = regexp.MustCompile(`(<=|>=|<|>|==|=)?\s*(` + num + `)\b`)
@@ -48,9 +48,9 @@ func Intervals(raw string) []Interval {
 	}
 	if found := wildcard.FindStringSubmatch(text); found != nil {
 		lo := *bound(found[1] + "." + found[2])
+		lo[release] = 0
 		hi := lo
 		hi[1]++
-		hi[2], hi[3] = 0, 0
 		return []Interval{{Lo: lo, LoIncl: true, Hi: &hi}}
 	}
 	tokens := token.FindAllStringSubmatch(text, -1)
@@ -76,7 +76,11 @@ func Intervals(raw string) []Interval {
 			out, lo = append(out, next), nil
 		case "":
 			// a bare version is usually "tested on", so everything up to it counts
-			out, lo = append(out, Interval{LoIncl: true, Hi: version, HiIncl: true}), nil
+			next := Interval{LoIncl: true, Hi: version, HiIncl: true}
+			if lo != nil {
+				next.Lo, next.LoIncl = lo.Lo, lo.LoIncl
+			}
+			out, lo = append(out, next), nil
 		default:
 			out, lo = append(out, Interval{Lo: *version, LoIncl: true, Hi: version, HiIncl: true}), nil
 		}

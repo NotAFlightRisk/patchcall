@@ -46,6 +46,7 @@ func TestViewNeverCallsABlindRunAllClear(t *testing.T) {
 		{[]check.App{app(check.Clear), app(check.Stale)}, "blind"},
 		{[]check.App{app(check.Clear), app(check.Unknown)}, "blind"},
 		{[]check.App{app(check.Untracked)}, "blind"},
+		{[]check.App{app(check.Clear), app(check.Watch)}, "blind"},
 		{[]check.App{{Status: check.Affected, Result: match.Result{Hits: []match.Hit{{}}}}}, "affected"},
 	}
 	for _, tc := range cases {
