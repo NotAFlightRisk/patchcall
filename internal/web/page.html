@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" class="{{.Tone}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{block "title" .}}{{.Title}} · Patchcall{{end}}</title>
+  <meta name="description" content="Security advisories for the apps you actually run, matched against the versions you're on.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#14171c">
+  {{- if .Pending}}<meta http-equiv="refresh" content="10">{{end}}
+  <link rel="icon" href="favicon-{{.Tone}}.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  {{- if not .Static}}
+  <link rel="alternate" type="application/rss+xml" title="Patchcall alerts" href="feed.xml">
+  {{- end}}
+  {{- block "head" .}}{{end}}
+</head>
+<body>
+  {{- block "banner" .}}{{end}}
+  <header class="status">
+    <div class="wrap">
+      <p class="brand"><svg class="mark" viewBox="0 0 16 16" aria-hidden="true"><use href="#mark"/></svg>Patchcall</p>
+      <h1><span class="light" aria-hidden="true"></span>{{.Title}}</h1>
+      {{- with .Subtitle}}<p class="subtitle">{{.}}</p>{{end}}
+      {{- if not .Pending}}
+      <ul class="facts">
+        <li>{{len .Report.Apps}} {{plural (len .Report.Apps) "app" "apps"}} from {{.Report.Source}}</li>
+        <li>Checked <time datetime="{{iso .Report.Checked}}">{{clock .Report.Checked}}</time></li>
+        {{- if not .Static}}<li>Next check <time datetime="{{iso .Report.Next}}">{{clock .Report.Next}}</time></li>{{end}}
+        <li>{{with .Report.Channels}}Alerts to {{join . ", "}}{{else}}No alert channels set up{{end}}</li>
+      </ul>
+      {{- end}}
+    </div>
+  </header>
+
+  <main class="wrap">
+    {{- with .Report.Problems}}
+    <section class="problems" aria-labelledby="problems">
+      <h2 id="problems">Something's in the way</h2>
+      <ul>{{range .}}<li>{{.}}</li>{{end}}</ul>
+    </section>
+    {{- end}}
+
+    {{- with .Affected}}
+    <section aria-labelledby="patch">
+      <h2 id="patch">Patch these</h2>
+      <ol class="rows">
+        {{- range .}}
+        <li class="row patch">
+          <div class="app">
+            <h3>{{.Name}}</h3>
+            {{template "where" .}}
+          </div>
+          <p class="move"><span class="version">{{.Version}}</span><svg class="arrow" viewBox="0 0 20 12" aria-hidden="true"><use href="#arrow"/></svg><span class="sr-only">, move to </span><span class="version target">{{.MoveTo}}</span></p>
+          {{template "hits" .Hits}}
+        </li>
+        {{- end}}
+      </ol>
+    </section>
+    {{- end}}
+
+    {{- with .Blind}}
+    <section aria-labelledby="blind">
+      <h2 id="blind">Can't check these</h2>
+      <ul class="rows">
+        {{- range .}}
+        <li class="row blind">
+          <div class="app">
+            <h3>{{.Name}}{{with .Version}} <span class="version">{{.}}</span>{{end}}</h3>
+            {{template "where" .}}
+          </div>
+          <p class="state">{{stateLabel .Status}}</p>
+          <p class="reason">{{.Problem}}</p>
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+
+    {{- with .Clear}}
+    <section aria-labelledby="clear">
+      <h2 id="clear">Clear</h2>
+      <ul class="clear">
+        {{- range .}}
+        <li class="{{.Status}}">
+          <span class="name">{{.Name}}</span>
+          <span class="version">{{.Version}}</span>
+          <span class="count">{{if eq .OnFile 0}}none published{{else}}{{.OnFile}} on file{{end}}</span>
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+
+    {{- with .Unfixed}}
+    <section class="later" aria-labelledby="unfixed">
+      <h2 id="unfixed">No fix out yet</h2>
+      <p class="note">These catch your version, but there's nothing to move to. You'll get an alert when there is.</p>
+      <ul class="rows">
+        {{- range .}}
+        <li class="row">
+          <div class="app"><h3>{{.Name}} <span class="version">{{.Version}}</span></h3></div>
+          {{template "hits" .Unfixed}}
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+
+    {{- with .Unreadable}}
+    <section class="later" aria-labelledby="unreadable">
+      <h2 id="unreadable">Worth a look by hand</h2>
+      <p class="note">The affected range is written in words, but the fix is newer than what you run.</p>
+      <ul class="rows">
+        {{- range .}}
+        <li class="row">
+          <div class="app"><h3>{{.Name}} <span class="version">{{.Version}}</span></h3></div>
+          {{template "hits" .Unreadable}}
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+    {{- with .Untracked}}
+    <section class="later" aria-labelledby="untracked">
+      <h2 id="untracked">Not covered</h2>
+      <ul class="rows">
+        {{- range .}}
+        <li class="row">
+          <div class="app"><h3>{{join .Names ", "}}</h3></div>
+          <p class="reason">{{.Reason}}</p>
+        </li>
+        {{- end}}
+      </ul>
+    </section>
+    {{- end}}
+  </main>
+
+  <footer class="wrap">
+    <p>Patchcall {{.Version}} matches each app's GitHub security advisories against the version it's running.</p>
+    <p>
+      {{- if not .Static}}<a href="feed.xml">RSS feed</a> · <a href="api/status">JSON</a> · {{end -}}
+      <a href="https://github.com/NotAFlightRisk/patchcall">Source</a>
+    </p>
+  </footer>
+
+  <svg hidden><symbol id="mark" viewBox="0 0 16 16"><path d="M8 1.5 2.5 3.8v4c0 3.2 2.3 5.6 5.5 6.7 3.2-1.1 5.5-3.5 5.5-6.7v-4Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.6 8.2 7.3 9.9l3.2-3.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="arrow" viewBox="0 0 20 12"><path d="M1 6h17m-5-4.5L18 6l-5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
+</body>
+</html>
+
+{{- define "where"}}
+<p class="where">{{with .Containers}}{{join . ", "}}{{else}}{{.Image}}{{end}}{{with .Repo}} · <a href="https://github.com/{{.}}/security/advisories">{{.}}</a>{{end}}</p>
+{{- end}}
+
+{{- define "hits"}}
+<ul class="hits">
+  {{- range $i, $hit := .}}{{if lt $i 5}}{{template "hit" $hit}}{{end}}{{end}}
+</ul>
+{{- if gt (len .) 5}}
+<details class="more">
+  <summary>{{sub (len .) 5}} more</summary>
+  <ul class="hits">
+    {{- range $i, $hit := .}}{{if ge $i 5}}{{template "hit" $hit}}{{end}}{{end}}
+  </ul>
+</details>
+{{- end}}
+{{- end}}
+
+{{- define "hit"}}
+<li>
+  <span class="severity {{lower .Severity}}">{{or .Severity "unrated"}}</span>
+  <a class="id" href="{{.URL}}">{{.ID}}</a>
+  <span class="summary">{{.Summary}}</span>
+  {{- if .KEV}}<span class="kev">Exploited in the wild</span>{{end}}
+  {{- with .Fix}}<span class="fixed">fixed in <span class="version">{{.}}</span></span>{{end}}
+</li>
+{{- end}}

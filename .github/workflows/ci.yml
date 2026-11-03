@@ -1,0 +1,129 @@
+name: 🚦 CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.emoji }} ${{ matrix.label }}
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: format
+            emoji: 🎨
+            run: test -z "$(gofmt -l .)" || { gofmt -d .; exit 1; }
+          - label: vet
+            emoji: 🔬
+            run: go vet ./...
+          - label: tests
+            emoji: 🧪
+            run: go test -race ./...
+          - label: tests on macOS
+            emoji: 🍎
+            os: macos-latest
+            run: go test ./...
+          - label: build
+            emoji: 🏗️
+            run: go build -trimpath -o patchcall . && ./patchcall --version
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - run: ${{ matrix.run }}
+
+  image:
+    name: 🐋 image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: patchcall:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Point it at the runner's Docker and wait for a first check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          docker run -d --name ci -p 127.0.0.1:7282:7282 -e GITHUB_TOKEN \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            --group-add "$(stat -c %g /var/run/docker.sock)" patchcall:ci
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:7282/api/status | jq -e '.apps | length > 0' > /dev/null 2>&1; then
+              echo "checked after ${i}s"
+              curl -fsS http://127.0.0.1:7282/api/status | jq '.apps[] | {name, status, version}'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs ci
+          exit 1
+
+  release:
+    name: 🧰 release dry run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=sign,sbom,publish
+      - name: List what it built
+        run: printf '%s\n' dist/*.tar.gz | tee -a "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: 📋 summary
+    runs-on: ubuntu-latest
+    needs: [check, image, release]
+    if: always()
+    steps:
+      - name: Write the summary
+        env:
+          CHECKS: ${{ needs.check.result }}
+          IMAGE: ${{ needs.image.result }}
+          RELEASE: ${{ needs.release.result }}
+        run: |
+          icon() {
+            case "$1" in
+              success) echo "✅ passed" ;;
+              skipped) echo "⏭️ skipped" ;;
+              cancelled) echo "🚫 cancelled" ;;
+              failure) echo "❌ failed" ;;
+              *) echo "❔ $1" ;;
+            esac
+          }
+          {
+            echo "| Job | Result |"
+            echo "| --- | --- |"
+            echo "| 🔍 checks | $(icon "$CHECKS") |"
+            echo "| 🐋 image | $(icon "$IMAGE") |"
+            echo "| 🧰 release dry run | $(icon "$RELEASE") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$CHECKS" = "success" ] && [ "$IMAGE" = "success" ] && [ "$RELEASE" = "success" ]

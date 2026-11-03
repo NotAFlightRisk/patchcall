@@ -1,0 +1,9 @@
+.demo {
+  padding-block: var(--space-2);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: var(--step-0);
+
+  strong { color: var(--text); }
+}

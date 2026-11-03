@@ -1,0 +1,167 @@
+# Which repo publishes the advisories for each image. Your overrides file uses the same shape.
+- name: Immich
+  repo: immich-app/immich
+  images: [ghcr.io/immich-app/immich-server, ghcr.io/immich-app/immich-machine-learning]
+- name: Jellyfin
+  repo: jellyfin/jellyfin
+  images: [jellyfin/jellyfin, ghcr.io/jellyfin/jellyfin, lscr.io/linuxserver/jellyfin,
+    linuxserver/jellyfin]
+- name: Nextcloud
+  repo: nextcloud/security-advisories
+  env: NEXTCLOUD_VERSION
+  only: [server]
+  images: [nextcloud, lscr.io/linuxserver/nextcloud, linuxserver/nextcloud]
+- name: Vaultwarden
+  repo: dani-garcia/vaultwarden
+  images: [vaultwarden/server, ghcr.io/dani-garcia/vaultwarden]
+- name: Home Assistant
+  repo: home-assistant/core
+  skip: [supervisor, companion, operating system, websocket]
+  images: [ghcr.io/home-assistant/home-assistant, homeassistant/home-assistant,
+    lscr.io/linuxserver/homeassistant, linuxserver/homeassistant]
+- name: Paperless-ngx
+  repo: paperless-ngx/paperless-ngx
+  images: [ghcr.io/paperless-ngx/paperless-ngx, paperlessngx/paperless-ngx]
+- name: Uptime Kuma
+  repo: louislam/uptime-kuma
+  skip: [dockge]
+  images: [louislam/uptime-kuma]
+- name: Gitea
+  repo: go-gitea/gitea
+  images: [gitea/gitea]
+- name: Pi-hole
+  repo: pi-hole/pi-hole
+  unversioned: >-
+    The image is versioned by Docker release, but Pi-hole's advisories use core
+    versions, so there's nothing safe to match against.
+  images: [pihole/pihole]
+- name: AdGuard Home
+  repo: AdguardTeam/AdGuardHome
+  images: [adguard/adguardhome]
+- name: Traefik
+  repo: traefik/traefik
+  images: [traefik, traefik/traefik]
+- name: Nginx Proxy Manager
+  repo: NginxProxyManager/nginx-proxy-manager
+  env: NPM_BUILD_VERSION
+  images: [jc21/nginx-proxy-manager]
+- name: Portainer
+  repo: portainer/portainer
+  images: [portainer/portainer-ce, portainer/portainer-ee]
+- name: Audiobookshelf
+  repo: advplyr/audiobookshelf
+  images: [ghcr.io/advplyr/audiobookshelf, advplyr/audiobookshelf]
+- name: Navidrome
+  repo: navidrome/navidrome
+  images: [deluan/navidrome, ghcr.io/navidrome/navidrome]
+- name: Syncthing
+  repo: syncthing/syncthing
+  images: [syncthing/syncthing, lscr.io/linuxserver/syncthing, linuxserver/syncthing]
+- name: FreshRSS
+  repo: FreshRSS/FreshRSS
+  images: [freshrss/freshrss, lscr.io/linuxserver/freshrss, linuxserver/freshrss]
+- name: Miniflux
+  repo: miniflux/v2
+  images: [miniflux/miniflux, ghcr.io/miniflux/miniflux]
+- name: linkding
+  repo: sissbruecker/linkding
+  images: [sissbruecker/linkding]
+- name: Linkwarden
+  repo: linkwarden/linkwarden
+  images: [ghcr.io/linkwarden/linkwarden]
+- name: Mealie
+  repo: mealie-recipes/mealie
+  images: [ghcr.io/mealie-recipes/mealie, hkotel/mealie]
+- name: Outline
+  repo: outline/outline
+  images: [outlinewiki/outline]
+- name: Wiki.js
+  repo: requarks/wiki
+  images: [ghcr.io/requarks/wiki, requarks/wiki, lscr.io/linuxserver/wikijs, linuxserver/wikijs]
+- name: n8n
+  repo: n8n-io/n8n
+  images: [n8nio/n8n, docker.n8n.io/n8nio/n8n]
+- name: Gotify
+  repo: gotify/server
+  images: [gotify/server, ghcr.io/gotify/server]
+- name: ntfy
+  repo: binwiederhier/ntfy
+  images: [binwiederhier/ntfy]
+- name: authentik
+  repo: goauthentik/authentik
+  images: [ghcr.io/goauthentik/server]
+- name: Authelia
+  repo: authelia/authelia
+  images: [authelia/authelia, ghcr.io/authelia/authelia]
+- name: Keycloak
+  repo: keycloak/keycloak
+  images: [quay.io/keycloak/keycloak]
+- name: Grafana
+  repo: grafana/grafana
+  images: [grafana/grafana, grafana/grafana-oss, grafana/grafana-enterprise]
+- name: Homepage
+  repo: gethomepage/homepage
+  images: [ghcr.io/gethomepage/homepage]
+- name: Homarr
+  repo: homarr-labs/homarr
+  images: [ghcr.io/homarr-labs/homarr]
+- name: File Browser
+  repo: filebrowser/filebrowser
+  images: [filebrowser/filebrowser]
+- name: Stirling-PDF
+  repo: Stirling-Tools/Stirling-PDF
+  images: [stirlingtools/stirling-pdf, frooodle/s-pdf]
+- name: Open WebUI
+  repo: open-webui/open-webui
+  images: [ghcr.io/open-webui/open-webui]
+- name: Ollama
+  repo: ollama/ollama
+  ignore_label: true
+  images: [ollama/ollama]
+- name: changedetection.io
+  repo: dgtlmoon/changedetection.io
+  images: [ghcr.io/dgtlmoon/changedetection.io, dgtlmoon/changedetection.io]
+- name: Actual
+  repo: actualbudget/actual
+  images: [actualbudget/actual-server, ghcr.io/actualbudget/actual]
+- name: Firefly III
+  repo: firefly-iii/firefly-iii
+  images: [fireflyiii/core]
+- name: PhotoPrism
+  repo: photoprism/photoprism
+  images: [photoprism/photoprism]
+- name: Seerr
+  repo: seerr-team/seerr
+  images: [ghcr.io/seerr-team/seerr, fallenbagel/jellyseerr, sctx/overseerr]
+- name: Sonarr
+  repo: Sonarr/Sonarr
+  images: [lscr.io/linuxserver/sonarr, linuxserver/sonarr, ghcr.io/hotio/sonarr]
+- name: Radarr
+  repo: Radarr/Radarr
+  images: [lscr.io/linuxserver/radarr, linuxserver/radarr, ghcr.io/hotio/radarr]
+- name: qBittorrent
+  repo: qbittorrent/qBittorrent
+  images: [lscr.io/linuxserver/qbittorrent, linuxserver/qbittorrent]
+- name: Frigate
+  repo: blakeblackshear/frigate
+  images: [ghcr.io/blakeblackshear/frigate]
+- name: Node-RED
+  repo: node-red/node-red
+  env: NODE_RED_VERSION
+  images: [nodered/node-red]
+- name: Synapse
+  repo: element-hq/synapse
+  images: [matrixdotorg/synapse, ghcr.io/element-hq/synapse]
+- name: SearXNG
+  repo: searxng/searxng
+  images: [searxng/searxng]
+- name: Umami
+  repo: umami-software/umami
+  images: [ghcr.io/umami-software/umami, docker.umami.is/umami-software/umami]
+- name: Kavita
+  repo: Kareadita/Kavita
+  images: [jvmilazz0/kavita, lscr.io/linuxserver/kavita, linuxserver/kavita]
+- untracked: Doesn't publish GitHub security advisories, so there's nothing here to watch.
+  images: [postgres, redis, valkey/valkey, mariadb, mysql, mongo, memcached, alpine, busybox,
+    ubuntu, debian, clickhouse/clickhouse-server, rabbitmq, tecnativa/docker-socket-proxy,
+    lscr.io/linuxserver/socket-proxy, linuxserver/socket-proxy]

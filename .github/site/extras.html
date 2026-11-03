@@ -1,0 +1,17 @@
+{{define "title"}}Patchcall: security advisories for the apps you actually run{{end}}
+
+{{define "head"}}
+  <link rel="canonical" href="https://patchcall.peng.ly/">
+  <meta property="og:title" content="Patchcall">
+  <meta property="og:description" content="A self-hosted watcher that tells you when an app you run in Docker has a security advisory your version is caught by, and a fix is out.">
+  <meta property="og:url" content="https://patchcall.peng.ly/">
+  <meta property="og:image" content="https://patchcall.peng.ly/social.png">
+  <link rel="stylesheet" href="site.css">
+  {{block "pulse" .}}{{end}}
+{{end}}
+
+{{define "banner"}}
+<aside class="demo" aria-label="About this page">
+  <p class="wrap"><strong>This is a demo.</strong> A made-up homelab, checked against real advisories on <time datetime="{{iso .Report.Checked}}">{{.Report.Checked.Format "2 Jan 2006"}}</time>. <a href="https://github.com/NotAFlightRisk/patchcall#readme">Run it on your own box</a></p>
+</aside>
+{{end}}

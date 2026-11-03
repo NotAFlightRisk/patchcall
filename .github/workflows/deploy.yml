@@ -1,0 +1,61 @@
+name: 🚀 Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/site/**
+      - .github/social-preview.png
+      - .github/workflows/deploy.yml
+      - internal/**
+      - scripts/site.sh
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: 🚀 Build and deploy the demo
+    if: github.repository_owner == 'NotAFlightRisk'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://patchcall.peng.ly
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check the demo homelab against today's advisories
+        run: ./scripts/site.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLIC_PLAUSIBLE_SCRIPT: ${{ vars.PUBLIC_PLAUSIBLE_SCRIPT }}
+      - name: Push it to Cloudflare
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.157.0"
+          command: deploy --config .github/site/wrangler.jsonc
+      - name: Check it's live
+        run: |
+          for _ in $(seq 20); do
+            if curl -fsS https://patchcall.peng.ly/ | grep -q '<title>Patchcall'; then
+              echo "✅ [patchcall.peng.ly](https://patchcall.peng.ly) is up" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "❌ patchcall.peng.ly isn't answering" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

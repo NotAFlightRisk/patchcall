@@ -1,0 +1,21 @@
+# A made-up homelab, a few months behind in places, for the demo page
+- {image: jellyfin/jellyfin, version: 10.11.2}
+- {image: ghcr.io/immich-app/immich-server, version: v3.3.5}
+- {image: nextcloud, version: 33.0.2}
+- {image: vaultwarden/server, version: 1.35.3}
+- {image: ghcr.io/home-assistant/home-assistant, version: 2026.10.4}
+- {image: ghcr.io/paperless-ngx/paperless-ngx, version: 3.4.1}
+- {image: louislam/uptime-kuma, version: 2.5.6}
+- {image: gitea/gitea, version: 28.3.0}
+- {image: n8nio/n8n, version: 2.46.4}
+- {image: traefik, version: v3.7.17}
+- {image: adguard/adguardhome, version: v0.107.79}
+- {image: ghcr.io/mealie-recipes/mealie, version: v3.30.0}
+- {image: ghcr.io/advplyr/audiobookshelf, version: 2.37.2}
+- {image: deluan/navidrome, version: 0.64.2}
+- {image: grafana/grafana, version: 13.3.0}
+- {image: binwiederhier/ntfy, version: 2.37.1}
+- {image: ghcr.io/open-webui/open-webui:main}
+- {image: pihole/pihole:2026.10.1}
+- {image: postgres:16}
+- {image: redis:7}
