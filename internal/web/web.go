@@ -116,7 +116,8 @@ func newView(report check.Report, version string, static bool) view {
 				n, plural(n, "app is", "apps are"))
 		}
 		if n := report.Count(check.Untracked); n > 0 {
-			v.Subtitle += fmt.Sprintf(" %d %s covered at all, see the bottom.", n, plural(n, "isn't", "aren't"))
+			v.Subtitle += fmt.Sprintf(" %d %s covered at all, see the bottom.",
+				n, plural(n, "app isn't", "apps aren't"))
 		}
 	}
 	return v

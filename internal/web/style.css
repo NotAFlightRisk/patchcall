@@ -264,7 +264,7 @@ section {
   font-weight: 600;
 }
 
-.clear {
+.board {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   overflow: hidden;
@@ -276,10 +276,10 @@ section {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0 var(--space-3);
-    margin: -1px 0 0 -1px;
+    margin: 0 -1px -1px 0;
     padding: var(--space-3) var(--space-4);
     border: solid var(--line);
-    border-width: 1px 0 0 1px;
+    border-width: 0 1px 1px 0;
   }
 
   .name { font-weight: 600; }

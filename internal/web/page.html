@@ -95,7 +95,7 @@
     {{- with .Clear}}
     <section aria-labelledby="clear">
       <h2 id="clear">Nothing to patch</h2>
-      <ul class="clear">
+      <ul class="board">
         {{- range .}}
         <li class="{{.Status}}{{if .Unfixed}} unfixed{{end}}">
           <span class="name">{{.Name}}</span>
