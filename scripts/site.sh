@@ -18,7 +18,7 @@ fi
 rm -rf site
 PATCHCALL_INVENTORY=.github/site/inventory.yaml PATCHCALL_DATA="$work/data" \
   go run . --render site --extra "$work/extras.html"
-cp .github/site/site.css .github/site/robots.txt site/
+cp .github/site/site.css .github/site/robots.txt .github/site/BingSiteAuth.xml site/
 cp .github/social-preview.png site/social.png
 [ -z "${pulse:-}" ] || cp .github/site/pulse.js site/
 
